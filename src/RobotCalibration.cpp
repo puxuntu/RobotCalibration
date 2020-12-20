@@ -71,19 +71,19 @@ void RobotCalibration::printMat(const double mat[4][4], string s)
 
 void RobotCalibration::OnLoadRef()
 {
-	if (m_device->loadTool("..\\src\\data\\calibration.rom", caliRef))
+	if (m_device->loadTool("..\\data\\calibration.rom", caliRef))
 	{
 		cout << "Add calibration reference!" << endl;
 	}
-	if (m_device->loadTool("..\\src\\data\\robot.rom", robotRef))
+	if (m_device->loadTool("..\\data\\robot.rom", robotRef))
 	{
 		cout << "Add robot refrence!" << endl;
 	}
-	if (m_device->loadTool("..\\src\\data\\probe.rom", probe))
+	if (m_device->loadTool("..\\data\\probe.rom", probe))
 	{
 		cout << "Add probe refrence!" << endl;
 	}
-	if (m_device->loadTool("..\\src\\data\\calibrator.rom", calibrator))
+	if (m_device->loadTool("..\\data\\calibrator.rom", calibrator))
 	{
 		cout << "Add calibrator refrence!" << endl;
 	}
@@ -92,7 +92,7 @@ void RobotCalibration::OnLoadRef()
 
 	//ÅäÖÃ±ê¶¨¿éµÄÆ«ÒÆ¾ØÕó
 	Matrix4d calibratorDevMatrix;
-	calibratorDevMatrix << 1, 0, 0, -3, 0, 1, 0, 0, 0, 0, 1, -14.79;
+	calibratorDevMatrix << 1, 0, 0, -19.5, 0, 1, 0, 0, 0, 0, 1, -13.64;
 	m_device->setDeviateMatrix(calibrator, calibratorDevMatrix);
 }
 
@@ -158,7 +158,6 @@ void RobotCalibration::OnTracking()
 	{
 		return;
 	}
-	
 }
 
 void RobotCalibration::OnCheckTimeOut()

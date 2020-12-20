@@ -100,7 +100,7 @@ void ToolCalibration::OnCheckTimeout()
 			UR_interface::matrix_2_UR6params(mat, pos);
 			m_robot->SetTCPPos(pos);
 			//保存标定结果
-			ofstream file("..\\src\\data\\toolCaliData.txt");
+			ofstream file("..\\data\\toolCaliData.txt");
 			if (!file.is_open())
 			{
 				cout << "can not open tool cali file" << endl;
@@ -121,7 +121,7 @@ void ToolCalibration::OnCheckTimeout()
 void ToolCalibration::OnLoad()
 {
 	Matrix4d matrixToolTcp;
-	ifstream m_caliFile("..\\src\\data\\toolCaliData.txt");
+	ifstream m_caliFile("..\\data\\toolCaliData.txt");
 	if (!m_caliFile.is_open())
 	{
 		cout << "can not open cali file" << endl;

@@ -166,9 +166,9 @@ Matrix4d Calibration::calibrationMatrix()
 
 void Calibration::OnCalibration()
 {
-	ofstream m_posFile("..\\src\\data\\posData.txt");
-	ofstream m_refFile("..\\src\\data\\refData.txt");
-	ofstream m_caliFile("..\\src\\data\\robotCaliData.txt");
+	ofstream m_posFile("..\\data\\posData.txt");
+	ofstream m_refFile("..\\data\\refData.txt");
+	ofstream m_caliFile("..\\data\\robotCaliData.txt");
 	if (!m_posFile.is_open())
 	{
 		cout << "can not open pos file" << endl;
@@ -242,7 +242,7 @@ void Calibration::OnAuto()
 {
 	matrixEndBase.clear();
 	matrixRobotCali.clear();
-	ifstream m_posFile("..\\src\\data\\posData.txt");
+	ifstream m_posFile("..\\data\\posData.txt");
 	if (!m_posFile.is_open())
 	{
 		cout << "can not open pos file" << endl;
@@ -278,7 +278,7 @@ void Calibration::OnAuto()
 
 void Calibration::OnLoadData()
 {
-	ifstream m_caliFile("..\\src\\data\\robotCaliData.txt");
+	ifstream m_caliFile("..\\data\\robotCaliData.txt");
 	if (!m_caliFile.is_open())
 	{
 		cout << "can not open cali file" << endl;
