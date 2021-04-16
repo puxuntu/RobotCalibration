@@ -7,11 +7,10 @@
 #include "NDI.h"
 #include "UrAPI/UR_interface.h"
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
+#include <Eigen/Core>
 #define PI 3.1415926
 
-typedef Eigen::Matrix<double, 3, 9> Matrix39d;
-typedef Eigen::Matrix<double, 18, 3> Matrix183d;
-typedef Eigen::Matrix<double, 18, 1> Vector18d;
 
 class Calibration : public QWidget
 {
@@ -41,11 +40,9 @@ private:
 	bool isCalibrated;
 
 	bool isReach(const double pos[6]);
-	Vector3d getKVector(Matrix4d matrix);
-	//num是第几组
-	void getSeriesKVector(int num, Vector3d& KA1, Vector3d& KA2, Vector3d& KB1, Vector3d& KB2,
-		Matrix4d& MA1, Matrix4d& MA2, Matrix4d& MB1, Matrix4d& MB2);
-	Vector3d getT(Matrix4d A, Matrix4d B, Matrix3d R);
+	Vector3d getKVector(Matrix4d matrix);//旋转矩阵从李群变为李代数
+
+	void getSeriesKVector(int num, Vector3d& ka, Vector3d& kb, Matrix4d& ma, Matrix4d& mb);
 	Matrix4d calibrationMatrix();
 
 private slots:

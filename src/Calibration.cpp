@@ -89,79 +89,50 @@ Vector3d Calibration::getKVector(Matrix4d matrix)
 	return k;
 }
 
-void Calibration::getSeriesKVector(int num, Vector3d & KA1, Vector3d & KA2, Vector3d & KB1,
-	Vector3d & KB2, Matrix4d& MA1, Matrix4d& MA2, Matrix4d& MB1, Matrix4d& MB2)
+void Calibration::getSeriesKVector(int num, Vector3d& ka, Vector3d& kb, Matrix4d& ma, Matrix4d& mb)
 {
-	MA1 = matrixRobotCali[0 + 3 * num].inverse()*matrixRobotCali[1 + 3 * num];
-	MA2 = matrixRobotCali[1 + 3 * num].inverse()*matrixRobotCali[2 + 3 * num];
-	MB1 = matrixEndBase[0 + 3 * num] * matrixEndBase[1 + 3 * num].inverse();
-	MB2 = matrixEndBase[1 + 3 * num] * matrixEndBase[2 + 3 * num].inverse();
-
-	KA1 = getKVector(MA1);
-	KA2 = getKVector(MA2);
-	KB1 = getKVector(MB1);
-	KB2 = getKVector(MB2);
-}
-
-Vector3d Calibration::getT(Matrix4d A, Matrix4d B, Matrix3d R)
-{
-	Matrix3d E;
-	Matrix3d RA = A.block(0, 0, 3, 3);
-	Vector3d TA = A.block(0, 3, 3, 1);
-	Vector3d TB = B.block(0, 3, 3, 1);
-
-	E << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-	return (RA - E).inverse()*(R*TB - TA);
+	ma = matrixRobotCali[1 + 2 * num].inverse()*matrixRobotCali[0 + 2 * num];
+	mb = matrixEndBase[1 + 2 * num] * matrixEndBase[0 + 2 * num].inverse();
+	ka = getKVector(ma);
+	kb = getKVector(mb);
 }
 
 Matrix4d Calibration::calibrationMatrix()
 {
-	Vector3d KA[6], KB[6];
-	Matrix4d MA[6], MB[6];
-	for (int i = 0; i < 3; i++)
-	{
-		getSeriesKVector(i, KA[2 * i + 0], KA[2 * i + 1], KB[2 * i + 0], KB[2 * i + 1],
-			MA[2 * i + 0], MA[2 * i + 1], MB[2 * i + 0], MB[2 * i + 1]);
+	int num = matrixEndBase.size() / 2;
+	vector<Matrix4d> ma(num), mb(num);//矩阵MA和MB
+	vector<Vector3d> ka(num), kb(num);//对应的对数映射KA，KB
+
+	for (int i = 0; i < num; i++) {
+		getSeriesKVector(i, ka[i], kb[i], ma[i], mb[i]);
 	}
 
-	Matrix39d A, B;
-	A.block(0, 0, 3, 1) = KA[0];
-	A.block(0, 1, 3, 1) = KA[1];
-	A.block(0, 2, 3, 1) = KA[0].cross(KA[1]);
-	A.block(0, 3, 3, 1) = KA[2];
-	A.block(0, 4, 3, 1) = KA[3];
-	A.block(0, 5, 3, 1) = KA[2].cross(KA[3]);
-	A.block(0, 6, 3, 1) = KA[4];
-	A.block(0, 7, 3, 1) = KA[5];
-	A.block(0, 8, 3, 1) = KA[4].cross(KA[5]);
-
-	B.block(0, 0, 3, 1) = KB[0];
-	B.block(0, 1, 3, 1) = KB[1];
-	B.block(0, 2, 3, 1) = KB[0].cross(KB[1]);
-	B.block(0, 3, 3, 1) = KB[2];
-	B.block(0, 4, 3, 1) = KB[3];
-	B.block(0, 5, 3, 1) = KB[2].cross(KB[3]);
-	B.block(0, 6, 3, 1) = KB[4];
-	B.block(0, 7, 3, 1) = KB[5];
-	B.block(0, 8, 3, 1) = KB[4].cross(KB[5]);
-
-	Matrix3d R = A * B.transpose()*(B*B.transpose()).inverse();
-
-	Matrix183d A1;
-	Vector18d B1;
-	Matrix3d E;
-	E << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-
-	for (int i = 0; i < 6; i++)
-	{
-		A1.block(3 * i, 0, 3, 3) = MA[i].block(0, 0, 3, 3) - E;
-		B1.block(3 * i, 0, 3, 1) = R * MB[i].block(0, 3, 3, 1) - MA[i].block(0, 3, 3, 1);
+	Matrix3d m;
+	m.Zero();
+	for (int i = 0; i < num; i++) {
+		m += kb[i] * ka[i].transpose();
 	}
-	Vector3d T = (A1.transpose()*A1).inverse()*(A1.transpose()*B1);
 
-	Matrix4d result;
-	result << R, T, 0, 0, 0, 1;
-	return result;
+	Eigen::EigenSolver<Matrix3d> es(m.transpose()*m);
+	Matrix3d d = es.pseudoEigenvalueMatrix();
+	Matrix3d v = es.pseudoEigenvectors();
+	for (int i = 0; i < 3; i++) {
+		d(i, i) = sqrt(d(i, i));
+	}
+
+	//旋转矩阵
+	Matrix3d r = (v * d * v.inverse()).inverse() * m.transpose();
+
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> a;
+	a.resize(3 * num, 3);
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> b;
+	b.resize(3 * num, 1);
+
+	Vector3d t = (a.transpose()*a).inverse()*a.transpose()*b;
+
+	Matrix4d ans;
+	ans << r, t, 0, 0, 0, 1;
+	return ans;
 }
 
 void Calibration::OnCalibration()
@@ -249,9 +220,13 @@ void Calibration::OnAuto()
 		return;
 	}
 
-	for (int i = 0; i < 9; ++i)
+	while(1)
 	{
-		Matrix4d refMatrix, posMatrix;
+		if (m_posFile.eof()) {
+			break;
+		}
+
+		Matrix4d posMatrix;
 		for (int j = 0; j < 4; ++j)
 		{
 			for (int k = 0; k < 4; ++k)
@@ -263,7 +238,7 @@ void Calibration::OnAuto()
 	}
 	m_posFile.close();
 
-	for (int i = 0; i < 9; ++i)
+	for (int i = 0; i < matrixEndBase.size(); ++i)
 	{
 		double pos[6], mat[4][4];
 		Matrix4d2mat(matrixEndBase[i], mat);
