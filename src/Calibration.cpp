@@ -89,50 +89,65 @@ Vector3d Calibration::getKVector(Matrix4d matrix)
 	return k;
 }
 
-void Calibration::getSeriesKVector(int num, Vector3d& ka, Vector3d& kb, Matrix4d& ma, Matrix4d& mb)
+void Calibration::getSeriesKVector(int num, int size, Vector3d& KA, Vector3d& KB, Matrix4d& MA, Matrix4d& MB)
 {
-	ma = matrixRobotCali[1 + 2 * num].inverse()*matrixRobotCali[0 + 2 * num];
-	mb = matrixEndBase[1 + 2 * num] * matrixEndBase[0 + 2 * num].inverse();
-	ka = getKVector(ma);
-	kb = getKVector(mb);
+	MA = matrixRobotCali[size + num].inverse()*matrixRobotCali[num];
+	MB = matrixEndBase[size + num] * matrixEndBase[num].inverse();
+	KA = getKVector(MA);
+	KB = getKVector(MB);
 }
 
 Matrix4d Calibration::calibrationMatrix()
 {
 	int num = matrixEndBase.size() / 2;
-	vector<Matrix4d> ma(num), mb(num);//矩阵MA和MB
-	vector<Vector3d> ka(num), kb(num);//对应的对数映射KA，KB
+	vector<Matrix4d> MA(num), MB(num);//矩阵MA和MB
+	vector<Vector3d> KA(num), KB(num);//对应的对数映射KA，KB
 
 	for (int i = 0; i < num; i++) {
-		getSeriesKVector(i, ka[i], kb[i], ma[i], mb[i]);
+		getSeriesKVector(i, num, KA[i], KB[i], MA[i], MB[i]);
 	}
 
-	Matrix3d m;
-	m.Zero();
+	//求旋转矩阵
+	Matrix3d M;
+	M.Zero();
 	for (int i = 0; i < num; i++) {
-		m += kb[i] * ka[i].transpose();
+		M += KB[i] * KA[i].transpose();
 	}
 
-	Eigen::EigenSolver<Matrix3d> es(m.transpose()*m);
-	Matrix3d d = es.pseudoEigenvalueMatrix();
-	Matrix3d v = es.pseudoEigenvectors();
+	Eigen::EigenSolver<Matrix3d> ES(M.transpose()*M);
+	Matrix3d D = ES.pseudoEigenvalueMatrix();
+	Matrix3d V = ES.pseudoEigenvectors();
 	for (int i = 0; i < 3; i++) {
-		d(i, i) = sqrt(d(i, i));
+		D(i, i) = sqrt(D(i, i));
 	}
 
-	//旋转矩阵
-	Matrix3d r = (v * d * v.inverse()).inverse() * m.transpose();
+	Matrix3d R = (V * D * V.inverse()).inverse() * M.transpose();
 
-	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> a;
-	a.resize(3 * num, 3);
-	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> b;
-	b.resize(3 * num, 1);
+	//求平移向量
+	Matrix3d E;
+	E << 1, 0, 0, 0, 1, 0, 0, 0, 1;
 
-	Vector3d t = (a.transpose()*a).inverse()*a.transpose()*b;
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> A;
+	A.resize(3 * num, 3);
+	for (int i = 0; i < num; i++) {
+		A.block(3 * i, 0, 3, 3) = MA[i].block(0, 0, 3, 3) - E;
+	}
 
-	Matrix4d ans;
-	ans << r, t, 0, 0, 0, 1;
-	return ans;
+	Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> B;
+	B.resize(3 * num, 1);
+	for (int i = 0; i < num; i++) {
+		B.block(3 * i, 0, 3, 1) = R * MB[i].block(0, 3, 3, 1) - MA[i].block(0, 3, 3, 1);
+	}
+
+	Vector3d T = (A.transpose()*A).inverse()*A.transpose()*B;
+
+	Matrix4d caliMatrix;
+	caliMatrix << R, T, 0, 0, 0, 1;
+	caliMatrix(0, 3) /= 1000;
+	caliMatrix(1, 3) /= 1000;
+	caliMatrix(2, 3) /= 1000;
+
+	return caliMatrix;
 }
 
 void Calibration::OnCalibration()
@@ -183,14 +198,15 @@ void Calibration::OnCollection()
 		ui.textBrowser->append("collect failed!");
 		return;
 	}
-	refMatrix(0, 3) /= 1000;
-	refMatrix(1, 3) /= 1000;
-	refMatrix(2, 3) /= 1000;
+	//refMatrix(0, 3) /= 1000;
+	//refMatrix(1, 3) /= 1000;
+	//refMatrix(2, 3) /= 1000;
 	matrixRobotCali.push_back(refMatrix);
 	cout << "ref matrix" << endl;
 	cout << refMatrix << endl;
 
-	double pos[6], posMat[4][4];
+	double pos[6] = { 0 };
+	double posMat[4][4];
 	m_robot->GetTCPPos(pos);
 	for (int i = 0; i < 6; i++)
 	{
@@ -201,6 +217,9 @@ void Calibration::OnCollection()
 	m_robot->UR6params_2_matrix(pos, posMat);
 	Matrix4d robotMatrix;
 	robotMatrix = mat2Matrix4d(posMat);
+	robotMatrix(0, 3) *= 1000;
+	robotMatrix(1, 3) *= 1000;
+	robotMatrix(2, 3) *= 1000;
 	matrixEndBase.push_back(robotMatrix);
 	cout << "robot matrix" << endl;
 	cout << robotMatrix << endl;
@@ -244,7 +263,7 @@ void Calibration::OnAuto()
 		Matrix4d2mat(matrixEndBase[i], mat);
 		m_robot->matrix_2_UR6params(mat, pos);
 		m_robot->Movel_pose(pos, 3, 0.5);
-		while (!isReach(pos)) m_robot->Movel_pose(pos, 3, 0.5);
+		while (!isReach(pos)); //m_robot->Movel_pose(pos, 3, 0.5);
 		Matrix4d refMatrix;
 		m_device->getToolTransformationMatrix(robotRef, caliRef, refMatrix);
 		matrixRobotCali.push_back(refMatrix);

@@ -42,7 +42,7 @@ private:
 	bool isReach(const double pos[6]);
 	Vector3d getKVector(Matrix4d matrix);//旋转矩阵从李群变为李代数
 
-	void getSeriesKVector(int num, Vector3d& ka, Vector3d& kb, Matrix4d& ma, Matrix4d& mb);
+	void getSeriesKVector(int num, int size, Vector3d& KA, Vector3d& KB, Matrix4d& MA, Matrix4d& MB);
 	Matrix4d calibrationMatrix();
 
 private slots:

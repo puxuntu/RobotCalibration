@@ -12,7 +12,7 @@ RobotCalibration::RobotCalibration(QWidget *parent)
 	m_state = stop;
 	m_device->initDevice();
 	initConnection();
-	ip = "192.168.1.11";
+	ip = "169.254.174.11";
 }
 
 RobotCalibration::~RobotCalibration()
@@ -102,6 +102,7 @@ void RobotCalibration::OnStart()
 	cout << "Start tracking!" << endl;
 
 	m_robot->connect_robot(ip);
+
 	if (m_robot->isConnected())
 	{
 		double pos[6] = { 0 };
@@ -125,13 +126,13 @@ void RobotCalibration::OnRobotCalibration()
 	{
 		return;
 	}
-	//double pos[6];
-	//m_robot->GetTCPPos(pos);
-	//for (int i = 0; i < 6; i++)
-	//{
-	//	cout << pos[i] << "  ";
-	//}
-	//cout << endl;
+	double pos[6] = { 0 };
+	m_robot->GetTCPPos(pos);
+	for (int i = 0; i < 6; i++)
+	{
+		cout << pos[i] << "  ";
+	}
+	cout << endl;
 
 	m_robotCali = new Calibration(m_robot, m_device, robotRef, caliRef);
 	m_robotCali->show();

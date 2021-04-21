@@ -2,8 +2,8 @@
 
 NDI::NDI()
 {
-	m_hostname = "P9-02926";
-	//m_hostname = "COM5";
+	//m_hostname = "P9-02926";
+	m_hostname = "COM3";
 	m_capi = CombinedApi();
 	apiSupportsBX2 = false;
 }
